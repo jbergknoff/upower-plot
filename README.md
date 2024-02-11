@@ -10,6 +10,6 @@ I did this because the graphs given by `gnome-power-statistics` are very hard to
 
 ## TODO
 
-* Make the plot zoom in on the appropriate region.
-* Any way to set default directory to `/var/lib/upower`?
-* Make it possible to load multiple files.
+* :white_check_mark: Make the plot zoom in on the appropriate region.
+* :white_check_mark: Any way to set default directory to `/var/lib/upower`? Apparently not
+* :white_check_mark: Make it possible to load multiple files.

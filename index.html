@@ -8,61 +8,99 @@
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body>
-    <h1>UPower Battery Readings Plot</h1>
-    <input type="file" id="fileInput" accept=".dat">
+    <h1>UPower Battery Readings Plot (<tt>/var/lib/upower</tt>)</h1>
+    <input type="file" id="fileInput" accept=".dat" multiple>
     <div id="plot"></div>
 
     <script>
-        document.getElementById('fileInput').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            const reader = new FileReader();
-
-            reader.onload = function(e) {
-                const contents = e.target.result;
-                const data = parseData(contents);
-                plotData(data);
-            };
-
-            reader.readAsText(file);
-        });
-
-        function parseData(contents) {
-            // Assuming the file contains CSV data with columns 'Timestamp' and 'Battery Percentage'
-            const lines = contents.split('\n').slice(1); // Skip header
-            const data = {
-                timestamp: [],
-                batteryPercentage: []
-            };
-
-            lines.forEach(line => {
-                const [timestamp, batteryPercentage] = line.trim().split('\t');
-                data.timestamp.push(new Date(timestamp * 1000));
-                data.batteryPercentage.push(parseFloat(batteryPercentage));
-            });
-
-            console.log(data)
-            return data;
+        // The filename is formatted like `history-<data type>-<model name>-<serial number>.dat`, cf.
+        // https://gitlab.freedesktop.org/upower/upower/-/blob/be823973672297be949fcb9ab70db22b0f5fcc6d/src/up-device.c#L292-325
+        // Compare with serial number, etc., reported by `cat /sys/class/power_supply/.../serial_number`.
+        function extractSeriesIdentifier(filename) {
+          return filename.split('.dat')[0];
         }
 
-        function plotData(data) {
-            const layout = {
-                title: 'Battery Percentage over Time',
-                xaxis: {
-                    title: 'Time'
-                },
-                yaxis: {
-                    title: 'Battery Percentage'
-                }
-            };
+        // Converts upower `.dat` data (tab-separated, `<timestamp in seconds>\t<battery percentage>\t<battery status>`)
+        // into a map `{ timestamps: <array of Date>, values: <array of float> }` for use in the plot.
+        function toSeries(data) {
+          return data.split('\n').reduce(
+            function(accumulator, row) {
+              const parts = row.split('\t');
+              if (parts.length !== 3) {
+                return accumulator;
+              }
 
-            const trace = {
-                x: data.timestamp,
-                y: data.batteryPercentage,
-                mode: 'lines+markers',
-                type: 'scatter'
-            };
+              accumulator.timestamps.push(new Date(parts[0] * 1000));
+              accumulator.values.push(parseFloat(parts[1]));
+              return accumulator;
+            },
+            {
+              timestamps: [],
+              values: [],
+            },
+          );
+        }
 
-            Plotly.newPlot('plot', [trace], layout);
+        document.getElementById('fileInput').addEventListener('change', async function(event) {
+          const content = await Promise.all(
+            [...event.target.files]
+              .filter((file) => file.name.endsWith('.dat'))
+              .map(
+                async (file) => [extractSeriesIdentifier(file.name), toSeries(await file.text())]
+              ),
+          );
+
+          plot(content);
+        });
+
+        function getExtremeTimes(timestamps) {
+          return timestamps.reduce(
+            (accumulator, timestamp) => {
+              accumulator.min = Math.min(accumulator.min, timestamp);
+              accumulator.max = Math.max(accumulator.max, timestamp);
+              return accumulator;
+            },
+            { min: Infinity, max: -Infinity },
+          );
+        }
+
+        function plot(data) {
+          Plotly.purge('plot');
+
+          const extremeTimes = data.reduce(
+            (accumulator, [_, series]) => {
+              const extremes = getExtremeTimes(series.timestamps);
+              accumulator.min = Math.min(accumulator.min, extremes.min);
+              accumulator.max = Math.max(accumulator.max, extremes.max);
+              return accumulator;
+            },
+            { min: Infinity, max: -Infinity },
+          );
+          const layout = {
+              title: 'Battery Percentage over Time',
+              xaxis: {
+                  title: 'Time',
+                  range: [extremeTimes.min, extremeTimes.max],
+              },
+              yaxis: {
+                  title: 'Battery Percentage',
+                  range: [0, 100],
+              }
+          };
+
+          const traces = data.map(
+            ([seriesId, series]) => {
+              return {
+                x: series.timestamps,
+                y: series.values,
+                mode: 'markers',
+                type: 'scatter',
+                name: seriesId,
+              };
+            },
+          );
+
+          Plotly.newPlot('plot', traces, layout);
         }
     </script>
 </body>
