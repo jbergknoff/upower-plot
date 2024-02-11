@@ -1,12 +1,12 @@
 # upower-plot
 
-This is a tool for visualizing upower battery charge history. The initial revision is very lightly modified from code which ChatGPT gave, which was only slightly broken, based on the prompt
+This is a web-based tool for visualizing [UPower](https://upower.freedesktop.org/) battery charge history (typically stored in `/var/lib/upower/history-charge-*.dat`). The initial revision is very lightly modified from code which ChatGPT gave, which was only slightly broken, based on the prompt
 
 ```
 write a webpage that accepts upower battery readings via an `input type=file` and makes an explorable plot of them
 ```
 
-I did this because the graphs given by `gnome-power-statistics` are very hard to read and can't be zoomed.
+I made this because I was having a hard time inspecting the plots produced by `gnome-power-statistics`.
 
 ## TODO
 
