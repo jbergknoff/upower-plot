@@ -8,6 +8,8 @@ write a webpage that accepts upower battery readings via an `input type=file` an
 
 I made this because I was having a hard time inspecting the plots produced by `gnome-power-statistics`.
 
+Try it out here: https://jbergknoff.github.io/upower-plot/. As you can verify from the source code, the selected files do not leave your computer.
+
 ## TODO
 
 * [x] Make the plot zoom in on the appropriate region.
